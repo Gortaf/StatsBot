@@ -56,7 +56,7 @@ async def poll(ctx,arg,arg2=30):
 	
 	#Check if there are enough arguments
 	if arg == None or len(choices) < 2:
-		ctx.send("You need at least 2 option to start a poll. Use >help for help")
+		ctx.send("You need at least 2 option to start a poll.")
 		return
 	
 	#Number emotes. Index corresponds with emote
