@@ -1,0 +1,1 @@
+worker: python DebateBot_V0.0.1.py

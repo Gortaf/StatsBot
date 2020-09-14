@@ -1,0 +1,9 @@
+discord
+gTTS 
+pyttsx3 
+playsound
+python-dotenv
+matplotlib
+pynacl
+dnspython
+asyncio
