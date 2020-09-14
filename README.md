@@ -1,4 +1,4 @@
-# StatsBot
+# StatsBot for discord
 A bot that provides statisical tools for managing your discord server. The bot's command prefix is >
 
 
