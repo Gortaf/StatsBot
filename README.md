@@ -5,8 +5,8 @@ A bot that provides statistical tools for managing your discord server. The bot'
 ## Adding this bot to your server
 Simply click this link: https://discord.com/oauth2/authorize?client_id=729973342035247167&scope=bot&permissions=101440. Then select your server. 
 
-
 ## Features
+StatsBot is now hosted on a better server! This means that longer polls will no longer be a problem.
 StatsBot is a work in progress. It was made to give you tools to visualise stats from your discord server. Here's the current list of working features:
 
 #### 1.\>help
