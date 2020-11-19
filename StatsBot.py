@@ -298,7 +298,10 @@ async def serverstats(ctx, *args):
 		plt.savefig(f"Plot_id{plotID}.png", transparent=True)
 		
 		#Send the pie chart
-		await ctx.send(file=discord.File(f'Plot_id{plotID}.png'))
+		if private:
+			await ctx.author.send(file=discord.File(f'Plot_id{plotID}.png'))
+		else:
+			await ctx.send(file=discord.File(f'Plot_id{plotID}.png'))
 		os.remove(f'Plot_id{plotID}.png')
 		
 		plt.cla()   # Clear axis
