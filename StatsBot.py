@@ -1,13 +1,9 @@
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jul  7 04:23:30 2020
-
 @author: Nicolas JACQUIN
-
 Matricule: 20148533
-
 Contact: nicolas.jacquin@umontreal.ca
-
 Description: Discord bot that provides stats tool for managing your server
     
 Syntaxe: None. Imbeded in a discord app
@@ -48,6 +44,9 @@ async def poll(ctx,arg,arg2=30):
 	#Not displaying unvoted option in the pie chart
 	def spe_autopct(pct):
 		return ('%.2f%%' % pct) if pct != 0 else ''
+	
+	# Change the plot style
+	plt.style.use("classic")
 	
 	# Empty list of lists to be filled with the reactions
 	reactions = [[] for i in range(0,10)]
@@ -137,17 +136,6 @@ async def userstats(ctx, statType = "help",user = None, private = None):
 	if len(ctx.message.mentions) > 0:
 		print(ctx.message.mentions)
 		user = ctx.message.mentions[0]
-		
-	
-		
-	async def help(ctx, user, private):
-		helpMsg = "Hi there! This message was made to help you use >userstats.\n"
-		helpMsg += "Here are the differents types of stats currently implemented:\n"
-		helpMsg += '">userstats messages @user" will show stats about user\'s messages.\n'
-		helpMsg += '">userstats help" will show this message.\n'
-		helpMsg += "You can add the keyword private at the end of your command to receive the results in your DMs\n"
-		helpMsg += "_Note: If you don't specify a user, I will assume that you want your own stats._"
-		await user.send(helpMsg)
 	
 	async def messages(ctx, user, private):
 		
@@ -264,14 +252,22 @@ async def userstats(ctx, statType = "help",user = None, private = None):
 @client.command(pass_context=True)
 async def serverstats(ctx, *args):
 	
+	# Detecting the private keyword
 	if args[len(args)-1] == "private":
 		private = True
 	else:
 		private = False
 		
-	#Not displaying unvoted option in the pie chart
+	# Not displaying unvoted option in the pie chart
 	def spe_autopct(pct):
 		return ('%.2f%%' % pct) if pct != 0 else ''
+	
+	# Useful when mapping the name of the roles
+	def get_name(role):
+		name = role.name
+		if len(name) > 13:
+			name = name[:11]+"..."
+		return name
 	
 	async def channels(ctx, private):
 		pass
@@ -287,30 +283,57 @@ async def serverstats(ctx, *args):
 					dicRoles[toAdd] += 1
 					
 		sizes = dicRoles.values()
+		sizes = [(value / len(ctx.guild.members)) * 100 for value in sizes]
 		
-		#Create the pie chart
-		patches, texts, percent = plt.pie(sizes, shadow=True, startangle=140, autopct=spe_autopct)
-		plt.legend(patches, dicRoles.keys(), loc="best", title=f"Role repartition in {ctx.guild.name}")
-		plt.axis('equal')
-		plt.tight_layout()
+		# Creating the graph
+		matplotlib.rcParams.update({'font.size': 14})
+		fig = plt.figure(figsize = [12,7])
+		plt.style.use("dark_background")
 	
-		#Randomly generated plot ID to prevent mixing up plots between users
-		plotID = str(rn.randrange(1,100000))
-		plt.savefig(f"Plot_id{plotID}.png", transparent=True)
+		# Adding data
+		# (Note: Not the best structure. But will make subplotting easier in the future)
+		ax = fig.add_subplot(111)
+		ax.set_facecolor("#36393E")	
+		ax.bar(list(map(get_name, dicRoles.keys())), sizes, color = "#7289DA")
+		ax.set_title("Repartition of roles in "+ctx.guild.name)
 		
-		#Send the pie chart
+		# Getting the bar Rectangle objects from the plot
+		childrenLS=ax.get_children()
+		barlist=list(filter(lambda x: isinstance(x, matplotlib.patches.Rectangle), childrenLS))
+		
+		# Changing the color to the discord role's color
+		for index, role in enumerate(dicRoles.keys()):
+			color = role.color.to_rgb()
+			color = tuple(tmp/255 for tmp in color)
+			if color == (0,0,0):
+				color = (153/255,170/255,181/255)
+			barlist[index].set_color(color)
+		
+		# Final touches
+		plt.xticks(rotation=90, fontsize=8)
+		from matplotlib.ticker import FuncFormatter
+		formatter = FuncFormatter(lambda y, pos: "%d%%" % (y))
+		ax = plt.gca()
+		ax.yaxis.set_major_formatter(formatter)
+		plt.tight_layout()	
+	
+		# Randomly generated plot ID to prevent mixing up plots between users
+		plotID = str(rn.randrange(1,100000))
+		plt.savefig(f"Plot_id{plotID}.png", facecolor="#36393E", edgecolor='none')
+		
+		#Send the graph
 		if private:
 			await ctx.author.send(file=discord.File(f'Plot_id{plotID}.png'))
 		else:
 			await ctx.send(file=discord.File(f'Plot_id{plotID}.png'))
 		os.remove(f'Plot_id{plotID}.png')
 		
+		# Set the font size back to default
+		matplotlib.rcParams.update({'font.size': 12})
+		
 		plt.cla()   # Clear axis
 		plt.clf()   # Clear figure
 		plt.close()
-		
-		print(dicRoles)
-		
 		
 	await eval(f"{args[0]}(ctx, private)")
 
@@ -318,7 +341,7 @@ async def serverstats(ctx, *args):
 @client.command(pass_context=True)
 async def help(ctx, *args):
 	user = ctx.author
-	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a pie chart showing it.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
+	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a graph showing the percentage of users with each roles.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
 	await user.send(toSend)
 
 client.run(token)
