@@ -34,7 +34,7 @@ This command will retrieve the messaging data in the last 30 days from a specifi
 
 This will send stats from the user's messages in this format:
 
-![userstats messages chart](https://i.gyazo.com/b3cba4ad4cf01fe73b008bae0a5fdd3e.png "userstats messages stats")
+![userstats messages chart](https://i.gyazo.com/b3cba4ad4cf01fe73b008bae0a5fdd3e.png "userstats messages stats exemple")
 
 NOTE: you can add the keyword "private" at the end of this command to receive the results in your DMs
 
@@ -44,7 +44,9 @@ The \>serverstats command will be a multipurpose command to retrieve data about 
 
 #####   \>serverstats roles
 
-This command will retrieve the repartition of roles in your server and post a pie chart to visualize it. The default role of the server will not be counted. (Might add an optional argument in the future to count it)
+This command will retrieve the repartition of roles in your server and post a bar plot to visualize it. The default role of the server will not be counted. (Might add an optional argument in the future to count it). Each bar represent the percentage of users that have a specific role. The bar will have the same color as the role to make it more readable in servers with a large amount of roles.
+
+![serverstats roles chart](https://i.gyazo.com/0211e49f970f037e6791ba07a2e59594.png "serverstats messages stats exemple")
 
 NOTE: you can add the keyword "private" at the end of this command to receive the results in your DMs
 
