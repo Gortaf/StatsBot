@@ -41,6 +41,7 @@ async def on_ready():
 @client.command(pass_context=True)
 async def poll(ctx,arg,arg2=30):
 	
+	import matplotlib
 	import matplotlib.pyplot as plt
 	
 	#Not displaying unvoted option in the pie chart
@@ -107,18 +108,23 @@ async def poll(ctx,arg,arg2=30):
 	sizes = sizes[:len(choices)]
 
 	#Create the pie chart
-	patches, texts, percent = plt.pie(sizes, shadow=True, startangle=140, autopct=spe_autopct)
-	plt.legend(patches, choices, loc="best", title=f"{voteNb} votes")
-	plt.axis('equal')
-	plt.tight_layout()
+	fig1, ax1 = plt.subplots()
+	patches, texts, percentage = ax1.pie(sizes, shadow=True, startangle=140, autopct=spe_autopct)
+	ax1.legend(patches, choices, loc="best", title=f"{voteNb} votes")
+	ax1.axis('equal')
+	fig1.tight_layout()
 
 	#Randomly generated plot ID to prevent mixing up plots between users
 	plotID = str(rn.randrange(1,100000))
-	plt.savefig(f"Plot_id{plotID}.png", transparent=True)
+	fig1.savefig(f"Plot_id{plotID}.png", transparent=True)
 	
 	#Send the pie chart
 	await ctx.send(file=discord.File(f'Plot_id{plotID}.png'))
 	os.remove(f'Plot_id{plotID}.png')
+	
+	plt.clf()
+	plt.close()
+	fig1.clf()
 
 @client.command(pass_context=True) # TODO: rewrite with *args
 async def userstats(ctx, statType = "help",user = None, private = None):
@@ -243,6 +249,10 @@ async def userstats(ctx, statType = "help",user = None, private = None):
 		await toSend.send("Here are the stats for "+ user.mention +" 's messages:   (Click to enhance)")
 		await toSend.send(file=discord.File(f'Plot_id{plotID}.png'))
 		os.remove(f'Plot_id{plotID}.png')
+		
+		plt.clf()
+		plt.close()
+		fig.clf()
 					
 	await eval(f"{statType}(ctx,user,private)")
 
@@ -321,8 +331,6 @@ async def serverstats(ctx, *args):
 		plotID = str(rn.randrange(1,100000))
 		fig.savefig(f"Plot_id{plotID}.png", facecolor="#36393E", edgecolor='none')
 		
-		
-		
 		#Send the graph
 		if private:
 			await ctx.send("The data has been processed! Check your DMs!   (private stats)")
@@ -335,6 +343,10 @@ async def serverstats(ctx, *args):
 		
 		# Set the font size back to default
 		matplotlib.rcParams.update({'font.size': 12})
+		
+		plt.clf()
+		plt.close()
+		fig.clf()
 		
 	await eval(f"{args[0]}(ctx, private)")
 
