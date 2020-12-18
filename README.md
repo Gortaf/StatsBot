@@ -12,6 +12,9 @@ StatsBot is a work in progress. It was made to give you tools to visualise stats
 #### 1.\>help
 the \>help command will send you a help message in your DMs to help you use StatsBot
 
+#### 1.\>uptime
+this command will show for how long the bot has been online and running. This is useful because if you had a poll going on when a restart happen, the poll is lost.
+
 #### 2. \>poll
 
 the \>poll command allows you to organise a poll accross your server. Simply follow this syntax:
