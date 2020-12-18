@@ -13,8 +13,6 @@ import os
 import discord
 import asyncio
 from dotenv import load_dotenv
-import matplotlib
-import matplotlib.pyplot as plt
 import random as rn
 import string
 
@@ -23,6 +21,7 @@ from discord.utils import get
 import datetime
 from datetime import timedelta
 from datetime import date
+import time
 # from discord.voice_client import VoiceClient
 
 load_dotenv()
@@ -36,10 +35,13 @@ client.suggestOpened={}
 
 @client.event
 async def on_ready():
-    print("Logged in as: " + client.user.name + "\n")
+	print("Logged in as: " + client.user.name + "\n")
+	client.startTime = time.time()
 	
 @client.command(pass_context=True)
 async def poll(ctx,arg,arg2=30):
+	
+	import matplotlib.pyplot as plt
 	
 	#Not displaying unvoted option in the pie chart
 	def spe_autopct(pct):
@@ -117,13 +119,12 @@ async def poll(ctx,arg,arg2=30):
 	#Send the pie chart
 	await ctx.send(file=discord.File(f'Plot_id{plotID}.png'))
 	os.remove(f'Plot_id{plotID}.png')
-	
-	plt.cla()   # Clear axis
-	plt.clf()   # Clear figure
-	plt.close()
 
 @client.command(pass_context=True) # TODO: rewrite with *args
 async def userstats(ctx, statType = "help",user = None, private = None):
+	
+	import matplotlib
+	import matplotlib.pyplot as plt
 	
 	if private == "private":
 		private = True
@@ -242,15 +243,14 @@ async def userstats(ctx, statType = "help",user = None, private = None):
 		await toSend.send("Here are the stats for "+ user.mention +" 's messages:   (Click to enhance)")
 		await toSend.send(file=discord.File(f'Plot_id{plotID}.png'))
 		os.remove(f'Plot_id{plotID}.png')
-	
-		plt.cla()   # Clear axis
-		plt.clf()   # Clear figure
-		plt.close()
 					
 	await eval(f"{statType}(ctx,user,private)")
 
 @client.command(pass_context=True)
 async def serverstats(ctx, *args):
+	
+	import matplotlib
+	import matplotlib.pyplot as plt
 	
 	# Detecting the private keyword
 	if args[len(args)-1] == "private":
@@ -315,33 +315,45 @@ async def serverstats(ctx, *args):
 		formatter = FuncFormatter(lambda y, pos: "%d%%" % (y))
 		ax = plt.gca()
 		ax.yaxis.set_major_formatter(formatter)
-		plt.tight_layout()	
+		fig.tight_layout()	
 	
 		# Randomly generated plot ID to prevent mixing up plots between users
 		plotID = str(rn.randrange(1,100000))
-		plt.savefig(f"Plot_id{plotID}.png", facecolor="#36393E", edgecolor='none')
+		fig.savefig(f"Plot_id{plotID}.png", facecolor="#36393E", edgecolor='none')
+		
+		
 		
 		#Send the graph
 		if private:
+			await ctx.send("The data has been processed! Check your DMs!   (private stats)")
+			await ctx.author.send(f"Here is {ctx.guild.name}'s repartition of roles:   (Click to enhance)")
 			await ctx.author.send(file=discord.File(f'Plot_id{plotID}.png'))
 		else:
+			await ctx.send("Here is this server's repartition of roles:   (Click to enhance)")
 			await ctx.send(file=discord.File(f'Plot_id{plotID}.png'))
 		os.remove(f'Plot_id{plotID}.png')
 		
 		# Set the font size back to default
 		matplotlib.rcParams.update({'font.size': 12})
 		
-		plt.cla()   # Clear axis
-		plt.clf()   # Clear figure
-		plt.close()
-		
 	await eval(f"{args[0]}(ctx, private)")
+
+
+@client.command(pass_context=True)
+async def uptime(ctx, *args):
+	uptime = time.time() - client.startTime
+	toSend = f"StatsBot has been online for {int(uptime/60)} minutes. If you had any poll going before the last restart, it has unfortunately been lost."
+	
+	if "private" in args:
+		await ctx.author.send(toSend)
+		return
+	await ctx.send(toSend)
 
 
 @client.command(pass_context=True)
 async def help(ctx, *args):
 	user = ctx.author
-	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a graph showing the percentage of users with each roles.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
+	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>uptime\nShows the bot's uptime. If the bot restarted during an ongoing poll, the poll will be lost.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a graph showing the percentage of users with each roles.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
 	await user.send(toSend)
 
 client.run(token)
