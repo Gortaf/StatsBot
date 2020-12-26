@@ -2,11 +2,8 @@
 """
 Created on Tue Jul  7 04:23:30 2020
 @author: Nicolas JACQUIN
-Matricule: 20148533
 Contact: nicolas.jacquin@umontreal.ca
 Description: Discord bot that provides stats tool for managing your server
-    
-Syntaxe: None. Imbeded in a discord app
 """
 
 import os
@@ -31,12 +28,12 @@ token = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.all()
 client =commands.Bot(command_prefix = ">", intents = intents)
 client.remove_command('help')
-client.suggestOpened={}
 
 @client.event
 async def on_ready():
 	print("Logged in as: " + client.user.name + "\n")
 	client.startTime = time.time()
+	client.serv_events = {}
 	
 @client.command(pass_context=True)
 async def poll(ctx,arg,arg2=30):
@@ -181,7 +178,7 @@ async def userstats(ctx, statType = "help",user = None, private = None):
 			
 			# The bot might not have access to certain channels
 			except discord.errors.Forbidden:
-				hasAllAccess = False
+				pass
 		
 		# Sorting the dateList
 		dateList.sort()
@@ -350,11 +347,167 @@ async def serverstats(ctx, *args):
 		
 	await eval(f"{args[0]}(ctx, private)")
 
+@client.command(pass_context=True)
+async def event(ctx, *args):
+	
+	async def parse_date(date):
+		# Parsing "then" string into a datetime object
+		try:
+			tmp = date.split("/")
+			date = datetime.datetime(int(tmp[0]),int(tmp[1]), int(tmp[2]), int(tmp[3]), int(tmp[4]))
+			return date
+		except:
+			return None
+	
+	if not ctx.guild.me.guild_permissions.manage_roles:   # Check for manage_roles permissions   (not asked at launch)
+		await ctx.send("This features requires me to have the \"manage roles\" permission")
+		return
+	
+	if len(args) == 0:
+		await ctx.send("You need to specify arguments (see >help)")
+		return
+	
+	if args[0] == "create":
+		
+		if ctx.guild.id not in client.serv_events.keys():
+			client.serv_events[ctx.guild.id] = {}
+		
+		if len(args) > 1:
+			
+			if args[1] in client.serv_events[ctx.guild.id].keys():
+				await ctx.send(f'The event {args[1]} already exists in this server. Please cancel the first event or wait until it takes place, or runs out of time.')
+				return
+				
+			if len(args) > 2:
+				toSend = f"{ctx.author.mention} wants to create the following event: {args[1]}"
+				
+				if "/" in str(args[2]):   # With a defined date/hour
+					event_date = await parse_date(args[2])
+					if event_date == None:
+						await ctx.send("Date format is incorrect. Please follow this format: Year/Month/Day/Hour/Minute")
+						return
+					
+					tmp = event_date - ctx.message.created_at 
+					tmp = tmp.days * 24 * 60 * 60 + tmp.seconds # Time difference in seconds
+					
+					if tmp <= 5: # date is already passed (margin of 5 seconds for good mesure)
+						await ctx.send("This date has already passed.")
+						return
+					
+					toSend += f"\nThis event is scheduled for {str(event_date).strip('00').strip(':')} UTC"
+					
+					toWait = tmp
+				else:   # Without a defined hour
+					toWait = int(args[2])
+					event_date = None
+					
+				toSend += "\n\nReact with ✅ to opt in for this event.\nReact with 🔔 to get notified when the event beggins/when the timer ends."
+				ev_id = rn.randint(1, 1000000000000)  # Event ID
+				client.serv_events[ctx.guild.id][args[1]] = (ctx.author,ev_id,event_date) 
+				
+				message = await ctx.send(toSend)
+				await message.add_reaction("✅")
+				await message.add_reaction("🔔")
+				await asyncio.sleep(toWait)
+				message = await message.channel.fetch_message(message.id)
+				print(message.reactions)
+				
+				if args[1] not in client.serv_events[ctx.guild.id]:   # Event could have been canceled
+					return
+				
+				# The event begins! Or the time to opt in is up...
+				event_role = await ctx.guild.create_role(name=ev_id, mentionable=True)
+				print(event_role)
+				to_ping = message.reactions[1].users()
+				async for user in to_ping:
+					await user.add_roles(event_role)
+				
+				toDelete = await ctx.send(str(event_role.mention))
+				toDelete = await toDelete.channel.fetch_message(toDelete.id)
+				await toDelete.delete(delay = 1)
+				await ctx.send(f"The event {args[1]}, organised by {ctx.author.mention} is starting now!\nNumber of participants: {message.reactions[0].count-1}")
+				await event_role.delete()
+				del client.serv_events[ctx.guild.id][args[1]]
+				if len(client.serv_events[ctx.guild.id]) == 0:
+					del client.serv_events[ctx.guild.id]
+				
+			else:  
+				await ctx.send("You need to specify either a date and hour at which the event will take place, or the amount of time users will have to opt in (see >help).")
+				return
+		else:
+			await ctx.send("You need to specify an event name (see >help).")
+			return
+		
+	if args[0] == "cancel":
+		
+		if len(args) == 1:
+			await ctx.send("You need to specify the name of the event you wish to cancel.")
+			return
+		
+		try:
+			if ctx.author != client.serv_events[ctx.guild.id][args[1]][0]:
+				await ctx.send("An event can only be canceled by the event organiser.")
+				return
+				
+			del client.serv_events[ctx.guild.id][args[1]]
+			if len(client.serv_events[ctx.guild.id]) == 0:
+				del client.serv_events[ctx.guild.id]
+			
+			await ctx.send("Event was successfully canceled.")
+			return
+			
+		except:
+			await ctx.send("Could not find event... Perhaps it has already taken place, or was already canceled?")
+			return
+
+	if args[0] == "list":
+		
+		try:
+			event_dic = client.serv_events[ctx.guild.id]
+		except:
+			await ctx.send("No upcoming event is registered on this server.")
+			return
+		
+		toSend = " ```"
+		
+		for event_name,data in event_dic.items():
+			toSend += f"\n{event_name}, organised by {data[0].name}"
+			if data[2] != None:
+				toSend += f"   :   {str(data[2]).strip('00').strip(':')}"
+			
+		toSend+="\n```"
+		await ctx.send(toSend)
+		return
+	
+	if args[0] == "stats":
+		await ctx.send("This feature is not yet implemented")
+		return
+	
 
 @client.command(pass_context=True)
 async def uptime(ctx, *args):
-	uptime = time.time() - client.startTime
-	toSend = f"StatsBot has been online for {int(uptime/60)} minutes. If you had any poll going before the last restart, it has unfortunately been lost."
+	uptime = time.time() - client.startTime    # In seconds
+	toAdd = "second"
+	
+	uptime = int(uptime)
+	
+	if uptime//60 > 0:    # To minutes
+		uptime = uptime//60
+		toAdd = "minute"
+	if uptime//60 > 0:    # To hours
+		uptime = uptime//60 
+		toAdd = "hour"
+	if uptime//24 > 0:    # To days
+		uptime = uptime//24
+		toAdd = "day"
+	if uptime//7 > 0:     # To weeks
+		uptime = uptime//7
+		toAdd = "week"
+	
+	if uptime > 1:     # plural
+		toAdd += "s"
+	
+	toSend = f"StatsBot has been online for {uptime} {toAdd}. If you had any poll or event going before the last restart, it has unfortunately been lost."
 	
 	if "private" in args:
 		await ctx.author.send(toSend)
@@ -365,7 +518,9 @@ async def uptime(ctx, *args):
 @client.command(pass_context=True)
 async def help(ctx, *args):
 	user = ctx.author
-	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>uptime\nShows the bot's uptime. If the bot restarted during an ongoing poll, the poll will be lost.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a graph showing the percentage of users with each roles.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
+	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>uptime\nShows the bot's uptime. If the bot restarted during an ongoing poll, the poll will be lost.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n\n>poll [action] [name] [date or timer]\n\nThis command allows for creation of events, and can generate statistics for said event. Depending on the specified action, the command will do different things.\n\n[action]: There are several available actions:\n\ncreate: this will create an event with the specified name, at the specified date/timer. Users can opt in the event, and even ask to be notified when the event starts.\n\ncancel: this will cancel an upcoming event. This action requires you specify the name of the event, but you don't need to specify the date. You can only cancel events you organised. Canceling an event won't ping users.\n\nlist: this will list upcoming events in the server. This action doesn't require you to specify a name, or a date.\n\n[name]: Required for the \"create\" and \"cancel\" actions. This is your event's name. There can't be upcoming events with the same name in the same server.\n\n[date or timer]: Only required for the \"create\" action. This is either the date (in UTC time) your event will take place, or an amount of time (in seconds) after which the event starts. If you wish to enter a date, follow this format: Year/Month/Day/Hour/Minute.```"
 	await user.send(toSend)
-
+	toSend = "```>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a graph showing the percentage of users with each roles.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
+	await user.send(toSend)
+	
 client.run(token)
