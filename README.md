@@ -6,7 +6,6 @@ A bot that provides statistical tools for managing your discord server. The bot'
 Simply click this link: https://discord.com/oauth2/authorize?client_id=729973342035247167&scope=bot&permissions=101440. Then select your server. 
 
 ## Features
-StatsBot is now hosted on a better server! This means that longer polls will no longer be a problem.
 StatsBot is a work in progress. It was made to give you tools to visualise stats from your discord server. Here's the current list of working features:
 
 #### 1.\>help
@@ -52,6 +51,28 @@ This command will retrieve the repartition of roles in your server and post a ba
 ![serverstats roles chart](https://i.gyazo.com/0211e49f970f037e6791ba07a2e59594.png "serverstats messages stats exemple")
 
 NOTE: you can add the keyword "private" at the end of this command to receive the results in your DMs
+
+#### 4. \>event
+
+The \>event command allows you to create serverwide events, and allows users to opt in and be notified once they begin.
+
+
+To create an event, use: 
+
+>\>event create "The event name" Year/Month/Day/Hour/Minute
+
+This will create an event message, where users can react to opt in, and be notified when it's time for the event to start (the notifications will be sent at the specified date/time you provided when using the command)
+
+
+To cancel an event, simply use:
+>\>event cancel "The event name"
+
+Note that you can only cancel an event that you created. Also note that canceling an event also cancels the notification.
+
+To list all the upcoming events in the server, simply use:
+>\>event list
+
+This will show all the upcoming events, with their scheduled date, and currently registered participants.
 
 ## Upcoming features
 Any feature in that list isn't yet implemented. It only serves as a preview of what the next features of this bot will be
