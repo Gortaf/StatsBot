@@ -418,12 +418,11 @@ async def event(ctx, *args):
 					
 				toSend += "\n\nReact with ✅ to opt in for this event.\nReact with 🔔 to get notified when the event beggins/when the timer ends."
 				ev_id = rn.randint(1, 1000000000000)
-				ev_msg = await ctx.message.channel.fetch_message(ctx.message.id)
-				client.serv_events[ctx.guild.id][args[1]] = (ctx.author,ev_id,event_date,ev_msg) 
 				
 				message = await ctx.send(toSend)
 				await message.add_reaction("✅")
 				await message.add_reaction("🔔")
+				client.serv_events[ctx.guild.id][args[1]] = (ctx.author,ev_id,event_date,message) 
 				await asyncio.sleep(toWait)
 				message = await message.channel.fetch_message(message.id)
 				print(message.reactions)
@@ -480,6 +479,7 @@ async def event(ctx, *args):
 		
 		try:
 			event_dic = client.serv_events[ctx.guild.id]
+			print(event_dic)
 		except:
 			await ctx.send("There are no registered upcoming events.")
 			return
@@ -487,10 +487,13 @@ async def event(ctx, *args):
 		toSend = " ```"
 		
 		for event_name,data in event_dic.items():
-			reac_count = data[3].reactions[0].count
+			
+			message = await data[3].channel.fetch_message(data[3].id)
+			reac_count = message.reactions[0].count -1
 			toSend += f"\n{event_name}, organised by {data[0].name}"
 			if data[2] != None:
-				toSend += f" : {str(data[2]).strip('00').strip(':')}  ({reac_count} registered participants)\n"
+				toSend += f" : {str(data[2]).strip('00').strip(':')}"
+			toSend+=f"  ({reac_count} registered participants)\n"
 			
 		toSend+="\n```"
 		await ctx.send(toSend)
@@ -535,10 +538,9 @@ async def uptime(ctx, *args):
 @client.command(pass_context=True)
 async def help(ctx, *args):
 	user = ctx.author
-	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>uptime\nShows the bot's uptime. If the bot restarted during an ongoing poll, the poll will be lost.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n\n>event [action] [name] [date or timer]\n\nThis command allows for creation of events, and can generate statistics for said event. Depending on the specified action, the command will do different things.\n\n[action]: There are several available actions:\n\ncreate: this will create an event with the specified name, at the specified date/timer. Users can opt in the event, and even ask to be notified when the event starts.\n\ncancel: this will cancel an upcoming event. This action requires you specify the name of the event, but you don't need to specify the date. You can only cancel events you organised. Canceling an event won't ping users.\n\nlist: this will list upcoming events in the server. This action doesn't require you to specify a name, or a date.\n\n[name]: Required for the \"create\" and \"cancel\" actions. This is your event's name. There can't be upcoming events with the same name in the same server.\n\n[date or timer]: Only required for the \"create\" action. This is either the date (in UTC time) your event will take place, or an amount of time (in seconds) after which the event starts. If you wish to enter a date, follow this format: Year/Month/Day/Hour/Minute.```"
+	toSend = " ```\nThis is the list of the currently available commands:        ([argument] = required argument, {argument} = optional argument)\n\n>help\nSends this message in the user's DMs.\n\n>uptime\nShows the bot's uptime. If the bot restarted during an ongoing poll, the poll will be lost.\n\n>poll [options] {time}\nThis command will generate a poll for users to vote. At the of the time, the bot will post a pie chart of the results.\n[options]: All the options the users can vote for. Follow this format: \"option1,option2,option3\" (quotation marks included). You can add up to 10 options.\n{time}: The amount of time users will have to vote in seconds. If no time is specified, defaults to 30.\n# Note: If the bots needs to restart, ongoing polls will be lost. Try to avoid making the poll too long to prevent any kind of loss.\n\n>event [action] [name] [date or timer]\nThis command allows for creation of events, and can generate statistics for said event. Depending on the specified action, the command will do different things.\n[action]: There are several available actions:\ncreate: this will create an event with the specified name, at the specified date/timer. Users can opt in the event, and even ask to be notified when the event starts.\ncancel: this will cancel an upcoming event. This action requires you specify the name of the event, but you don't need to specify the date. You can only cancel events you organised. Canceling an event won't ping users.\nlist: this will list upcoming events in the server. This action doesn't require you to specify a name, or a date.\n[name]: Required for the \"create\" and \"cancel\" actions. This is your event's name. There can't be upcoming events with the same name in the same server.\n[date or timer]: Only required for the \"create\" action. This is either the date (in UTC time) your event will take place, or an amount of time (in seconds) after which the event starts. If you wish to enter a date, follow this format: Year/Month/Day/Hour/Minute.```"
 	await user.send(toSend)
 	toSend = "```>userstats [type] {@user} {private}\nThis command allows you to obtain various stats on a user. \n[type]: There are several types:\nmessages: this will retrieve the messages from a user, and post graphs of the user's messaging history statistics on this server.\n(more types to come)\n{@user}: The user you wish to collect stats from. You need to mention the user with @user. If no user is specified, defaults to the one who used the command.\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n\n>serverstats [type] {private}\nThis command allows you to obtain various stats on the server.\n[type]: There are several types:\nroles: This will retrieve the repartition of roles in the server and post a graph showing the percentage of users with each roles.\n(more types to come)\n{private}: if the keyword \"private\" is used at the end of the command, the results will be sent in the DMs of the person using the command.\n```"
 	await user.send(toSend)
 
-print(dir(client))
 client.run(token)
